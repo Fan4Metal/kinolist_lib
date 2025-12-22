@@ -1,0 +1,1 @@
+uv run pyinstaller --clean --noconfirm --onedir --icon=".\icon.ico" --add-data "template.docx;." --add-data "template_libre.docx;." --add-data "template_a5.docx;." --add-data "no_poster.jpg;." --name kl --version-file=version_lib.txt kinolist_lib.py

@@ -1018,7 +1018,7 @@ kl --loc --a5                             --создает список из т�
         template = "template.docx"
         make_docx(kp_id, output, template, api, args.shorten, args.txtlist, args.newformat, args.genres)
 
-    # переимонование torrent файлов
+    # переименование torrent файлов
     elif args.rename:
         rename_torrents(api, args.rename)
 

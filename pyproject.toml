@@ -1,0 +1,19 @@
+[project]
+name = "kinolist-lib"
+version = "0.2.40"
+description = "Библиотека для создания списков фильмов"
+readme = "README.md"
+requires-python = "==3.10.19"
+dependencies = [
+    "kinopoisk-api-unofficial-client>=2.2.2",
+    "mutagen>=1.47.0",
+    "parse-torrent-name>=1.1.1",
+    "pillow>=12.0.0",
+    "pyinstaller>=6.17.0",
+    "pyinstaller-versionfile>=3.0.1",
+    "python-docx>=1.2.0",
+    "pywin32>=311",
+    "requests-cache>=1.2.1",
+    "simplejson>=3.20.2",
+    "tqdm>=4.67.1",
+]

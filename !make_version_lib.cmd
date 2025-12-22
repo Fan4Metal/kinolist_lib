@@ -1,0 +1,1 @@
+uv run create-version-file --source-format yaml --outfile version_lib.txt version_lib.yaml
