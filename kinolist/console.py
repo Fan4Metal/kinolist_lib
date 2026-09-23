@@ -32,13 +32,23 @@ YELLOW = "\x1b[33m"
 CYAN = "\x1b[36m"
 
 INDENT = "  "
-PROGRESS_FORMAT = INDENT + "{desc}: {n}/{total} |{bar}| {elapsed}"
-PROGRESS_WIDTH = 60
+PROGRESS_FORMAT = INDENT + "{desc}  {bar}  {n}/{total} ({percentage:3.0f}%)  {elapsed} < {remaining}"
+PROGRESS_WIDTH = 72
+# Дорожка из светлых блоков, заливка сплошная: оба символа есть в шрифтах консоли и в cp866.
+PROGRESS_CHARS = "░█"
 
 
 def progress(items: Iterable, desc: str) -> tqdm:
     """Индикатор выполнения в едином стиле; после завершения строка убирается."""
-    return tqdm(items, desc=desc, bar_format=PROGRESS_FORMAT, ncols=PROGRESS_WIDTH, ascii=" █", leave=False)
+    return tqdm(
+        items,
+        desc=desc,
+        bar_format=PROGRESS_FORMAT,
+        ncols=PROGRESS_WIDTH,
+        ascii=PROGRESS_CHARS,
+        colour="white" if supports_color(sys.stderr) else None,
+        leave=False,
+    )
 
 
 def supports_color(stream: TextIO) -> bool:
