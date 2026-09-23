@@ -33,11 +33,11 @@ STAGING = ROOT / "build" / "staging"
 ENTRY_POINT = "kinolist_lib.py"
 ICON = "icon.ico"
 # Ресурсы кладутся в корень сборки: так их находит kinolist.resources через sys._MEIPASS.
-DATA_FILES = ["template.docx", "template_a5.docx", "no_poster.jpg"]
+DATA_FILES = ["template.docx", "template_a5.docx", "template_cover.docx", "no_poster.jpg"]
 INSTALLER_SCRIPT = "kinolist_lib.iss"
 ISCC_CANDIDATES = [
-    Path(r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"),
-    Path(r"C:\Program Files\Inno Setup 6\ISCC.exe"),
+    Path(R"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"),
+    Path(R"C:\Program Files\Inno Setup 6\ISCC.exe"),
 ]
 
 #: Ресурс версии Windows. Без него Диспетчер задач и свойства файла показывают только имя exe.
@@ -102,15 +102,16 @@ def pyinstaller_command(version_file: Path) -> list[str]:
         "--onedir",
         "--console",
         "--name", APP_NAME,
-        "--icon", ICON,
+        "--icon", str(ROOT / ICON),
         "--version-file", str(version_file),
         "--distpath", str(STAGING),
         # Генерируемый kl.spec не нужен в корне проекта: build/ игнорируется git.
+        # Относительные пути в spec считаются от его каталога, поэтому ниже пути абсолютные.
         "--specpath", str(ROOT / "build"),
     ]  # fmt: skip
     for data in DATA_FILES:
-        cmd += ["--add-data", f"{data}{os.pathsep}."]
-    cmd.append(ENTRY_POINT)
+        cmd += ["--add-data", f"{ROOT / data}{os.pathsep}."]
+    cmd.append(str(ROOT / ENTRY_POINT))
     return cmd
 
 

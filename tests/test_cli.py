@@ -78,6 +78,21 @@ def test_tag_and_loc(fake_api, mp4_file, tmp_path):
     assert not (tmp_path / "empty.docx").exists()
 
 
+def test_loc_with_cover(fake_api, mp4_file, tmp_path):
+    from docx import Document
+
+    def cover_texts(path):
+        return {text.text for text in Document(str(path)).element.body[0].xpath(".//w:t")}
+
+    assert cli.main(["-t", mp4_file]) == 0
+    by_dir = tmp_path / "by_dir.docx"
+    assert cli.main(["--loc", str(tmp_path), "-o", str(by_dir), "--cover"]) == 0
+    assert cover_texts(by_dir) == {tmp_path.name}
+    custom = tmp_path / "custom.docx"
+    assert cli.main(["--loc", str(tmp_path), "-o", str(custom), "--cover", "Свой текст", "--newformat"]) == 0
+    assert cover_texts(custom) == {"Свой текст"}
+
+
 def test_tag_with_explicit_kp_id(fake_api, mp4_file):
     from kinolist.tags import read_tags
 

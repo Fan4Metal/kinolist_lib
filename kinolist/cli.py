@@ -53,6 +53,9 @@ kl --loc                                  --создает список list.doc
                                                 интерпретируется как рейтинг IMDb.
 kl --loc --newformat                      --создает список из тегов файлов в новом формате
 kl --loc --a5                             --создает список из тегов файлов в формате A5 (для планшетов)
+kl --loc --cover                          --создает список из тегов файлов с обложкой, заголовок обложки
+                                                берется из имени каталога
+kl --loc --cover "Рекомендации #231"      --создает список из тегов файлов с обложкой с указанным заголовком
 
 
 * Можно указать Kinopoisk_id напрямую, используя тег KP~XXX в названии фильма (где XXX - Kinopoisk_id)
@@ -123,6 +126,13 @@ def build_parser() -> argparse.ArgumentParser:
     add("-nf", "--newformat", action="store_true", help="модификатор для создания списка фильмов в новом формате")
     add("-g", "--genres", action="store_true", help="модификатор добавляет жанры в список фильмов")
     add("--a5", action="store_true", help="список в формате A5 (для списков с постерами)")
+    add(
+        "--cover",
+        nargs="?",
+        const="",
+        metavar="ТЕКСТ",
+        help="добавляет обложку первой страницей; без текста заголовок берется из имени каталога или файла",
+    )
     add("--sort", help=SORT_HELP)
     add("--nocache", action="store_true", help="не использовать кэш")
     add("--clearcache", action="store_true", help="очистить кэш")
@@ -181,16 +191,30 @@ def load_films(kp: Kinopoisk, kp_ids: list[int], shorten: bool = False) -> list[
     return films
 
 
-def save_lists(films: list[Film], output: str, args: argparse.Namespace) -> None:
+def cover_title(args: argparse.Namespace, default: str) -> str | None:
+    """Заголовок обложки: текст параметра ``--cover``, либо ``default``, если параметр указан без текста."""
+    if args.cover is None:
+        return None
+    return args.cover or default
+
+
+def dir_name(path: str) -> str:
+    return os.path.basename(os.path.abspath(path))
+
+
+def save_lists(films: list[Film], output: str, args: argparse.Namespace, cover_default: str = "") -> None:
+    cover = cover_title(args, cover_default)
     if args.newformat:
-        write_simple_list(films, output, genres=args.genres)
+        write_simple_list(films, output, genres=args.genres, cover=cover)
     else:
-        write_table_list(films, output, template_path(a5=args.a5), genres=args.genres)
+        write_table_list(films, output, template_path(a5=args.a5), genres=args.genres, cover=cover)
     if args.txtlist:
         write_txt_list(films, txt_path_for(output))
 
 
-def make_list_from_titles(kp: Kinopoisk, titles: list[str], output: str, args: argparse.Namespace) -> None:
+def make_list_from_titles(
+    kp: Kinopoisk, titles: list[str], output: str, args: argparse.Namespace, cover_default: str = ""
+) -> None:
     found, not_found = resolve_titles(kp, titles)
     for title in not_found:
         log.warning(f"Фильм не найден: {title}")
@@ -204,7 +228,7 @@ def make_list_from_titles(kp: Kinopoisk, titles: list[str], output: str, args: a
     if not films:
         log.error("Ошибка, список не создан!")
         return
-    save_lists(films, output, args)
+    save_lists(films, output, args, cover_default)
 
 
 def list_mp4_dir(path: str, follow_lnk: bool = False) -> list[str]:
@@ -249,7 +273,7 @@ def cmd_file(kp: Kinopoisk, path: str, output: str, args: argparse.Namespace) ->
         log.warning("Фильмы не найдены.")
         return
     log.info(f"Запрос из {path} ({len(titles)}): " + ", ".join(titles))
-    make_list_from_titles(kp, titles, output, args)
+    make_list_from_titles(kp, titles, output, args, cover_default=file_title(path))
 
 
 def cmd_tag(kp: Kinopoisk, path: str, args: argparse.Namespace) -> None:
@@ -296,7 +320,7 @@ def cmd_list(kp: Kinopoisk, path: str, output: str, args: argparse.Namespace) ->
         return
     files = list_mp4_dir(path)
     if files:
-        make_list_from_titles(kp, [file_title(file) for file in files], output, args)
+        make_list_from_titles(kp, [file_title(file) for file in files], output, args, cover_default=dir_name(path))
 
 
 def cmd_rename(kp: Kinopoisk, pattern: str) -> None:
@@ -358,7 +382,7 @@ def cmd_loc(path: str, output: str, args: argparse.Namespace) -> None:
     if not films:
         log.error("Ошибка, список не создан!")
         return
-    save_lists(films, output, args)
+    save_lists(films, output, args, cover_default=dir_name(path))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -392,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.file:
         cmd_file(kp, args.file, output, args)
     elif args.movie:
-        make_list_from_titles(kp, args.movie, output, args)
+        make_list_from_titles(kp, args.movie, output, args, cover_default=file_title(output))
     elif args.tag:
         cmd_tag(kp, args.tag, args)
     elif args.cleartags:

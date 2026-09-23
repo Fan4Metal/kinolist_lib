@@ -13,6 +13,7 @@ from PIL import Image
 
 TEMPLATE_A4 = "template.docx"
 TEMPLATE_A5 = "template_a5.docx"
+TEMPLATE_COVER = "template_cover.docx"
 NO_POSTER = "no_poster.jpg"
 CACHE_NAME = "cache"
 
@@ -31,6 +32,10 @@ def resource_path(name: str) -> Path:
 
 def template_path(a5: bool = False) -> Path:
     return resource_path(TEMPLATE_A5 if a5 else TEMPLATE_A4)
+
+
+def cover_template_path() -> Path:
+    return resource_path(TEMPLATE_COVER)
 
 
 def no_poster() -> Image.Image:
