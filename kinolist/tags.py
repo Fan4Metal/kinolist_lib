@@ -45,7 +45,7 @@ def _open(file_path: str) -> MP4 | None:
     try:
         return MP4(file_path)
     except (MutagenError, OSError) as error:
-        log.error(f"Ошибка! Не удалось открыть файл ({error}): {os.path.basename(file_path)}")
+        log.error(f"{os.path.basename(file_path)}: не удалось открыть файл ({error})")
         return None
 
 
@@ -57,7 +57,7 @@ def write_tags(film: Film, file_path: str) -> bool:
     try:
         video.delete()
     except Exception as error:
-        log.error(f"Ошибка при сохранении тегов в файл ({error}): {os.path.basename(file_path)}")
+        log.error(f"{os.path.basename(file_path)}: теги не записаны ({error})")
         return False
 
     video[TITLE] = film.title
@@ -83,7 +83,7 @@ def write_tags(film: Film, file_path: str) -> bool:
     try:
         video.save()
     except Exception as error:
-        log.error(f"Ошибка при сохранении тегов в файл ({error}): {os.path.basename(file_path)}")
+        log.error(f"{os.path.basename(file_path)}: теги не записаны ({error})")
         return False
     return True
 
@@ -151,6 +151,6 @@ def clear_tags(file_path: str) -> bool:
         video.delete()
         video.save()
     except Exception as error:
-        log.error(f"Ошибка при удалении тегов ({error}): {os.path.basename(file_path)}")
+        log.error(f"{os.path.basename(file_path)}: теги не удалены ({error})")
         return False
     return True

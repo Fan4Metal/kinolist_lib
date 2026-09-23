@@ -12,8 +12,8 @@ from docx import Document
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from docx.table import Table
-from tqdm import tqdm
 
+from .console import progress
 from .files import write_lines
 from .models import Film, image_to_png
 from .resources import cover_template_path, no_poster
@@ -132,12 +132,11 @@ def _fill_table(table: Table, film: Film, genres: bool) -> None:
 
 
 def _save(document, path: str) -> bool:
+    """Сохраняет документ; ``False``, если файл открыт в другой программе или недоступен для записи."""
     try:
         document.save(path)
     except PermissionError:
-        log.error(f'Ошибка! Нет доступа на запись к файлу "{path}". Список не сохранен.')
         return False
-    log.info(f'Файл "{path}" создан.')
     return True
 
 
@@ -148,7 +147,7 @@ def write_table_list(
     document = Document(str(template))
     if len(films) > 1:
         _clone_first_table(document, len(films) - 1)
-    for table, film in zip(tqdm(document.tables, desc="Запись в таблицу...      "), films, strict=True):
+    for table, film in zip(progress(document.tables, "Запись в таблицы"), films, strict=True):
         _fill_table(table, film, genres)
     if cover:
         add_cover(document, cover)
@@ -170,7 +169,7 @@ def write_simple_list(films: list[Film], path: str, genres: bool = False, cover:
     font.name = SIMPLE_FONT
     font.size = SIMPLE_FONT_SIZE
 
-    for number, film in enumerate(tqdm(films, desc="Запись в файл...         "), start=1):
+    for number, film in enumerate(progress(films, "Запись в файл"), start=1):
         paragraph = document.add_paragraph()
         paragraph.paragraph_format.space_after = Pt(12)
         paragraph.add_run(f"{number}. ")
@@ -187,7 +186,6 @@ def write_simple_list(films: list[Film], path: str, genres: bool = False, cover:
 def write_txt_list(films: list[Film], path: str) -> None:
     """Текстовый файл с названиями фильмов, по одному в строке."""
     write_lines(path, [film.title for film in films])
-    log.info(f'Файл "{path}" создан.')
 
 
 def txt_path_for(docx_path: str) -> str:

@@ -189,6 +189,7 @@ name = "kinolist-lib"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
     { name = "mutagen" },
     { name = "parse-torrent-title" },
     { name = "pillow" },
@@ -208,6 +209,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "colorama", marker = "sys_platform == 'win32'", specifier = ">=0.4.6" },
     { name = "mutagen", specifier = ">=1.47.0" },
     { name = "parse-torrent-title", specifier = ">=2.8" },
     { name = "pillow", specifier = ">=12.0.0" },

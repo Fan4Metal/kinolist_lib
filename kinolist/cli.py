@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import logging
+import glob
 import os
+import sys
 from pathlib import Path
 
 import requests
 import requests_cache
-from tqdm import tqdm
 
 from . import __version__
 from .argparse_ru import argparse
+from .console import Console, install_logging, progress
 from .docx_out import txt_path_for, write_simple_list, write_table_list, write_txt_list
 from .files import (
     Rename,
@@ -21,6 +22,7 @@ from .files import (
     is_mp4,
     read_lines,
     rename_destination,
+    safe_filename,
     sort_files,
     torrent_title,
 )
@@ -29,10 +31,10 @@ from .models import Film
 from .resources import cache_path, template_path
 from .tags import clear_tags, read_tags, write_tags
 
-log = logging.getLogger("kinolist")
-
 DEFAULT_OUTPUT = "list.docx"
 CACHE_EXPIRE_SECONDS = 3600
+
+console = Console()
 
 EPILOG = R"""
 Примеры:
@@ -133,9 +135,15 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ТЕКСТ",
         help="добавляет обложку первой страницей; без текста заголовок берется из имени каталога или файла",
     )
+    add(
+        "--cover-name",
+        action="store_true",
+        help="называет выходной файл как заголовок обложки (без запрещенных символов), работает вместе с --cover",
+    )
     add("--sort", help=SORT_HELP)
     add("--nocache", action="store_true", help="не использовать кэш")
     add("--clearcache", action="store_true", help="очистить кэш")
+    add("--pause", action="store_true", help="ждет нажатия Enter перед выходом (для запуска из контекстного меню)")
     return parser
 
 
@@ -144,7 +152,7 @@ def load_token() -> str | None:
     try:
         from config import KINOPOISK_API_TOKEN
     except ImportError:
-        log.error("Не найден файл config.py с переменной KINOPOISK_API_TOKEN.")
+        console.error("не найден файл config.py с переменной KINOPOISK_API_TOKEN.")
         return None
     return KINOPOISK_API_TOKEN
 
@@ -154,12 +162,16 @@ def resolve_output(output: str | None) -> str | None:
     if not output:
         return DEFAULT_OUTPUT
     if os.path.splitext(output)[1].lower() != ".docx":
-        log.error("Выходной файл должен иметь расширение docx.")
+        console.error("выходной файл должен иметь расширение docx.")
         return None
     output_dir = os.path.dirname(output)
     if output_dir:
         Path(output_dir).mkdir(parents=True, exist_ok=True)
     return output
+
+
+def found_text(result: SearchResult) -> str:
+    return f"{result.title} ({result.year})" if result.year else result.title
 
 
 def resolve_titles(kp: Kinopoisk, titles: list[str]) -> tuple[list[SearchResult], list[str]]:
@@ -168,26 +180,38 @@ def resolve_titles(kp: Kinopoisk, titles: list[str]) -> tuple[list[SearchResult]
     not_found: list[str] = []
     for title in titles:
         try:
-            result = kp.search(title)
+            result, query = kp.search_any(title)
         except (KinopoiskError, requests.RequestException) as error:
-            log.warning(f"Ошибка поиска «{title}»: {error}")
-            result = None
+            console.warn(f"{title}: ошибка поиска ({error})")
+            result, query = None, title
         if result is None:
-            log.info(f"{title} не найден")
+            console.fail(title)
             not_found.append(title)
         else:
-            log.info(f"Найден фильм: {result.title} ({result.year}), kinopoisk id: {result.kp_id}")
+            note = f"KP {result.kp_id}"
+            if query != title:
+                note += f", по запросу «{query}»"
+            console.ok(found_text(result), note)
             found.append(result)
     return found, not_found
 
 
+def search_summary(found: list[SearchResult], not_found: list[str]) -> None:
+    console.info(f"Найдено: {len(found)}, не найдено: {len(not_found)}")
+    if not_found:
+        # Отдельный список ненайденных названий: так их удобнее искать вручную.
+        console.section(f"Не найдены ({len(not_found)})")
+        for number, title in enumerate(not_found, start=1):
+            console.item(number, title)
+
+
 def load_films(kp: Kinopoisk, kp_ids: list[int], shorten: bool = False) -> list[Film]:
     films: list[Film] = []
-    for kp_id in tqdm(kp_ids, desc="Загрузка информации...   "):
+    for kp_id in progress(kp_ids, "Загрузка информации"):
         try:
             films.append(kp.film(kp_id, shorten))
         except (KinopoiskError, requests.RequestException, KeyError, ValueError) as error:
-            log.warning(f"Не удалось загрузить фильм {kp_id}: {error}")
+            console.warn(f"не удалось загрузить фильм {kp_id}: {error}")
     return films
 
 
@@ -202,44 +226,60 @@ def dir_name(path: str) -> str:
     return os.path.basename(os.path.abspath(path))
 
 
+def output_for_cover(output: str, cover: str) -> str:
+    """Имя файла по заголовку обложки (без запрещённых символов) в каталоге ``output``."""
+    name = safe_filename(cover).strip(" .")
+    return os.path.join(os.path.dirname(output), name + ".docx") if name else output
+
+
 def save_lists(films: list[Film], output: str, args: argparse.Namespace, cover_default: str = "") -> None:
     cover = cover_title(args, cover_default)
+    console.info(f"Фильмов в списке: {len(films)}")
+    if cover:
+        console.info(f"Обложка: {cover}")
+        if args.cover_name:
+            output = output_for_cover(output, cover)
     if args.newformat:
-        write_simple_list(films, output, genres=args.genres, cover=cover)
+        saved = write_simple_list(films, output, genres=args.genres, cover=cover)
     else:
-        write_table_list(films, output, template_path(a5=args.a5), genres=args.genres, cover=cover)
+        saved = write_table_list(films, output, template_path(a5=args.a5), genres=args.genres, cover=cover)
+    if not saved:
+        console.error(f'нет доступа на запись к файлу "{output}". Список не сохранен.')
+        return
     if args.txtlist:
         write_txt_list(films, txt_path_for(output))
+        console.info(f"Текстовый список: {txt_path_for(output)}")
+    console.result(f"Список создан: {output}")
 
 
 def make_list_from_titles(
     kp: Kinopoisk, titles: list[str], output: str, args: argparse.Namespace, cover_default: str = ""
 ) -> None:
+    console.section(f"Поиск фильмов ({len(titles)})")
     found, not_found = resolve_titles(kp, titles)
-    for title in not_found:
-        log.warning(f"Фильм не найден: {title}")
-    if args.test:
-        log.info(f"Найдено фильмов: {len(found)}, не найдено: {len(not_found)}")
+    search_summary(found, not_found)
+    if args.test or not found:
         return
-    if not found:
-        log.warning("Фильмы не найдены.")
-        return
+    console.section("Создание списка")
     films = load_films(kp, [item.kp_id for item in found], args.shorten)
     if not films:
-        log.error("Ошибка, список не создан!")
+        console.error("список не создан.")
         return
     save_lists(films, output, args, cover_default)
 
 
-def list_mp4_dir(path: str, follow_lnk: bool = False) -> list[str]:
-    log.info(f"Поиск файлов mp4 в каталоге: {os.path.abspath(path)}")
+def list_mp4_dir(path: str, follow_lnk: bool = False, sort: str | None = None) -> list[str]:
+    console.section(f"Каталог: {os.path.abspath(path)}")
     files = find_mp4_files(path, follow_lnk)
     if not files:
-        log.warning(f'В каталоге "{path}" файлы mp4 не найдены.')
+        console.warn("файлы mp4 не найдены.")
         return []
-    for file in files:
-        log.info(f"Найден файл: {os.path.basename(file)}")
-    log.info(f"Всего файлов: {len(files)}")
+    files, message = sort_files(files, sort)
+    if sort:
+        console.note(f"Сортировка: {message}")
+    for number, file in enumerate(files, start=1):
+        console.item(number, os.path.basename(file))
+    console.info(f"Всего файлов: {len(files)}")
     return files
 
 
@@ -249,74 +289,78 @@ def tag_file(kp: Kinopoisk, path: str, kp_id: int | None = None) -> bool:
     if kp_id is None:
         found, _ = resolve_titles(kp, [file_title(path)])
         if not found:
-            log.warning(f"Фильм не найден: {name}")
             return False
         kp_id = found[0].kp_id
     try:
         film = kp.film(kp_id)
     except (KinopoiskError, requests.RequestException, KeyError, ValueError) as error:
-        log.warning(f"Не удалось загрузить фильм {kp_id}: {error}")
+        console.warn(f"не удалось загрузить фильм {kp_id}: {error}")
         return False
     if not write_tags(film, path):
-        log.warning(f"Тег не записан в файл: {name}")
         return False
-    log.info(f"Записан тег в файл: {name}")
+    console.ok(f"{name} {console.arrow()} {film.title} ({film.year})", "теги записаны")
     return True
 
 
 def cmd_file(kp: Kinopoisk, path: str, output: str, args: argparse.Namespace) -> None:
     if not os.path.isfile(path):
-        log.error(f"Файл {path} не найден.")
+        console.error(f"файл {path} не найден.")
         return
     titles = read_lines(path)
     if not titles:
-        log.warning("Фильмы не найдены.")
+        console.warn("в файле нет названий фильмов.")
         return
-    log.info(f"Запрос из {path} ({len(titles)}): " + ", ".join(titles))
     make_list_from_titles(kp, titles, output, args, cover_default=file_title(path))
 
 
 def cmd_tag(kp: Kinopoisk, path: str, args: argparse.Namespace) -> None:
     if os.path.isfile(path):
         if not is_mp4(path):
-            log.error("Можно записывать теги только в файлы mp4.")
+            console.error("можно записывать теги только в файлы mp4.")
             return
+        console.section(f"Запись тегов: {os.path.basename(path)}")
         tag_file(kp, path, args.kinopoisk_id)
     elif os.path.isdir(path):
         files = list_mp4_dir(path)
-        if args.test:
-            _, not_found = resolve_titles(kp, [file_title(file) for file in files])
-            if not_found:
-                print("Следующие фильмы не найдены:")
-                print("\n".join(not_found))
+        if not files:
             return
-        for file in files:
-            tag_file(kp, file)
+        if args.test:
+            console.section(f"Поиск фильмов ({len(files)})")
+            found, not_found = resolve_titles(kp, [file_title(file) for file in files])
+            search_summary(found, not_found)
+            return
+        console.section("Запись тегов")
+        written = sum(tag_file(kp, file) for file in files)
+        console.result(f"Теги записаны: {written} из {len(files)}")
     else:
-        log.error("Неверно указан путь.")
+        console.error("неверно указан путь.")
 
 
 def cmd_cleartags(path: str) -> None:
     if os.path.isfile(path):
         if not is_mp4(path):
-            log.error("Можно удалять теги только в файлах mp4.")
+            console.error("можно удалять теги только в файлах mp4.")
             return
         files = [path]
     elif os.path.isdir(path):
         files = list_mp4_dir(path)
+        if not files:
+            return
     else:
-        log.error("Неверно указан путь.")
+        console.error("неверно указан путь.")
         return
+    console.section("Удаление тегов")
+    cleared = 0
     for file in files:
         if clear_tags(file):
-            log.info(f"Теги удалены в файле: {os.path.basename(file)}")
-        else:
-            log.warning(f"Теги не удалены в файле: {os.path.basename(file)}")
+            console.ok(os.path.basename(file))
+            cleared += 1
+    console.result(f"Теги удалены: {cleared} из {len(files)}")
 
 
 def cmd_list(kp: Kinopoisk, path: str, output: str, args: argparse.Namespace) -> None:
     if not os.path.isdir(path):
-        log.error("Ошибка! В качестве параметра должен быть путь до каталога с файлами mp4.")
+        console.error("в качестве параметра должен быть путь до каталога с файлами mp4.")
         return
     files = list_mp4_dir(path)
     if files:
@@ -325,78 +369,65 @@ def cmd_list(kp: Kinopoisk, path: str, output: str, args: argparse.Namespace) ->
 
 def cmd_rename(kp: Kinopoisk, pattern: str) -> None:
     """Переименовывает файлы из торрент-имён в ``Название (год).ext`` после подтверждения."""
-    import glob
-
     files = glob.glob(pattern)
     if not files:
-        log.warning("Файлы не найдены.")
+        console.warn("файлы не найдены.")
         return
+    console.section(f"Поиск названий ({len(files)})")
     renames: list[Rename] = []
     for file in files:
         name = os.path.basename(file)
-        log.info(f"Поиск названия фильма в имени файла: {name}")
         title = torrent_title(file)
         found = resolve_titles(kp, [title])[0] if title else []
         if not found:
-            log.info(f"Не найдено название фильма в имени файла: {name}")
+            console.fail(f"{name}: название не определено")
             continue
         renames.append(Rename(file, rename_destination(file, found[0].title, found[0].year)))
     if not renames:
-        log.warning("Нечего переименовывать.")
+        console.warn("нечего переименовывать.")
         return
 
-    print("\nБудут переименованы файлы:")
+    console.section("Будут переименованы файлы")
     for number, item in enumerate(renames, start=1):
-        print(f"{number:2d}:", item.source, "->", item.destination)
-    print()
-    if input("Продолжить? [y/n] ").lower() == "y":
+        console.item(number, f"{os.path.basename(item.source)} {console.arrow()} {os.path.basename(item.destination)}")
+    console.write()
+    if console.prompt("Продолжить? [y/n] ").lower() == "y":
         apply_renames(renames)
-        log.info("Файлы переименованы.")
+        console.result(f"Переименовано файлов: {len(renames)}")
     else:
-        log.info("Отмена переименования файлов.")
+        console.info("Переименование отменено.")
 
 
 def cmd_loc(path: str, output: str, args: argparse.Namespace) -> None:
     """Список по тегам mp4-файлов каталога без обращения к API."""
     if not os.path.isdir(path):
-        log.error("Ошибка! В качестве параметра должен быть путь до каталога с файлами mp4.")
+        console.error("в качестве параметра должен быть путь до каталога с файлами mp4.")
         return
-    log.info(f"Поиск файлов mp4 в каталоге: {os.path.abspath(path)}")
-    files = find_mp4_files(path, follow_lnk=True)
+    files = list_mp4_dir(path, follow_lnk=True, sort=args.sort)
     if not files:
-        log.warning(f'В каталоге "{path}" файлы mp4 не найдены.')
         return
-    files, message = sort_files(files, args.sort)
-    log.info(f"Сортировка файлов: {message}")
-    for file in files:
-        log.info(f"Найден файл: {os.path.basename(file)}")
-    log.info(f"Всего: {len(files)}")
 
+    console.section("Чтение тегов")
     films: list[Film] = []
-    for file in tqdm(files, desc="Загрузка тегов...        "):
+    for file in files:
         film = read_tags(file)
         if film is None:
-            log.warning(f"Не удалось прочитать теги в файле: '{os.path.basename(file)}'! Файл пропущен.")
+            console.fail(f"{os.path.basename(file)}: теги не прочитаны, файл пропущен")
         else:
+            console.ok(f"{film.title} ({film.year})" if film.year else film.title)
             films.append(film)
     if not films:
-        log.error("Ошибка, список не создан!")
+        console.error("список не создан.")
         return
+    console.section("Создание списка")
     save_lists(films, output, args, cover_default=dir_name(path))
 
 
-def main(argv: list[str] | None = None) -> int:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="[%(asctime)s]%(levelname)s:%(name)s:%(message)s",
-        datefmt="%d.%m.%Y %H:%M:%S",
-    )
-    args = build_parser().parse_args(argv)
-
+def run(args: argparse.Namespace) -> int:
     requests_cache.install_cache(str(cache_path()), expire_after=CACHE_EXPIRE_SECONDS)
     if args.clearcache:
         requests_cache.clear()
-        log.info("Кэш очищен.")
+        console.result("Кэш очищен.")
         return 0
     if args.nocache:
         requests_cache.uninstall_cache()
@@ -428,5 +459,25 @@ def main(argv: list[str] | None = None) -> int:
     elif args.loc:
         cmd_loc(args.loc, output, args)
     else:
-        print(f"Kinolist Lib {__version__}\nДля помощи используйте параметр --help")
+        console.info("Для помощи используйте параметр --help")
     return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    # При перенаправлении вывода кодировка может не содержать части символов: заменяем их, а не падаем.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
+    install_logging(console)
+    args = build_parser().parse_args(argv)
+    console.header(f"Kinolist Lib {__version__}")
+    try:
+        return run(args)
+    except KeyboardInterrupt:
+        console.write()
+        console.warn("прервано.")
+        return 130
+    finally:
+        if args.pause:
+            console.write()
+            console.prompt("Нажмите Enter для выхода...")

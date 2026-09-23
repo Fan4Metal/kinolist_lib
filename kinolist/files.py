@@ -43,7 +43,7 @@ def find_mp4_files(directory: str, follow_lnk: bool = False) -> list[str]:
             try:
                 target = lnk_target(lnk)
             except Exception as error:
-                log.warning(f"Не удалось прочитать ярлык {os.path.basename(lnk)}: {error}")
+                log.warning(f"{os.path.basename(lnk)}: не удалось прочитать ярлык ({error})")
                 continue
             if is_mp4(target) and os.path.isfile(target):
                 files.append(target)
@@ -104,7 +104,5 @@ def apply_renames(renames: list[Rename]) -> None:
     for item in renames:
         try:
             os.rename(item.source, item.destination)
-            log.info(f"Переименование файла: {item.source} -> {item.destination}")
         except OSError as error:
-            log.error(f"Ошибка переименования файла: {item.source} -> {item.destination}")
-            log.error(error)
+            log.error(f"{os.path.basename(item.source)}: не переименован ({error})")
