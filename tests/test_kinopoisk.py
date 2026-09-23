@@ -1,7 +1,15 @@
 import pytest
 from PIL import Image
 
-from kinolist.kinopoisk import Kinopoisk, KinopoiskError, fit_poster, kp_id_from_title, shorten_description
+from kinolist.kinopoisk import (
+    Kinopoisk,
+    KinopoiskError,
+    SearchResult,
+    fit_poster,
+    kp_id_from_title,
+    parse_title,
+    shorten_description,
+)
 
 FILM_JSON = {
     "kinopoiskId": 507,
@@ -58,6 +66,74 @@ def test_search_by_keyword():
     result = kp.search("Terminator")
     assert (result.kp_id, result.title, result.year) == (507, "Терминатор", "1984")
     assert kp.calls[0][1] == {"keyword": "Terminator", "page": 1}
+
+
+@pytest.mark.parametrize(
+    ("title", "variants", "year"),
+    [
+        ("Терминатор", ["Терминатор"], None),
+        (
+            "Терминатор (The Terminator) 1984",
+            ["Терминатор (The Terminator) 1984", "Терминатор", "The Terminator"],
+            1984,
+        ),
+        ("24: Искупление (2008)", ["24: Искупление (2008)", "24: Искупление"], 2008),
+        (
+            "Грязный Гарри 2. Высшая сила (Сила магнума) (Dirty Harry 2. Magnum Force) 1973",
+            [
+                "Грязный Гарри 2. Высшая сила (Сила магнума) (Dirty Harry 2. Magnum Force) 1973",
+                "Грязный Гарри 2. Высшая сила",
+                "Сила магнума",
+                "Dirty Harry 2. Magnum Force",
+            ],
+            1973,
+        ),
+        ("Элитный отряд 2 (Tropa de Elite 2 - O Inimigo ) 2011", None, 2011),
+    ],
+)
+def test_parse_title(title, variants, year):
+    parsed_variants, parsed_year = parse_title(title)
+    assert parsed_year == year
+    if variants is not None:
+        assert parsed_variants == variants
+    else:
+        assert parsed_variants[1:] == ["Элитный отряд 2", "Tropa de Elite 2 - O Inimigo"]
+
+
+def test_search_prefers_matching_year():
+    films = [
+        {"filmId": 444, "nameRu": "Терминатор 2", "year": "1991"},
+        {"filmId": 507, "nameRu": "Терминатор", "year": "1984"},
+    ]
+    kp = FakeKinopoisk({"/api/v2.1/films/search-by-keyword": {"searchFilmsCountResult": 2, "films": films}})
+    assert kp.search("Terminator").kp_id == 444
+    assert kp.search("Terminator", year=1984).kp_id == 507
+    assert kp.search("Terminator", year=1985).kp_id == 507  # год из другой базы отличается на единицу
+    assert kp.search("Terminator", year=1990).kp_id == 444  # точное совпадение важнее порядка
+    assert kp.search("Terminator", year=2000).kp_id == 444  # вне допуска: первый результат
+
+
+def test_search_any_falls_back_to_simpler_queries():
+    class StubKinopoisk(Kinopoisk):
+        def __init__(self):
+            super().__init__("token", delay=0)
+            self.queries = []
+
+        def search(self, query, year=None):
+            self.queries.append((query, year))
+            if query == "The Terminator":
+                return SearchResult(507, "Терминатор", 1984)
+            return None
+
+    kp = StubKinopoisk()
+    result, query = kp.search_any("Терминатор (The Terminator) 1984")
+    assert (result.kp_id, query) == (507, "The Terminator")
+    assert kp.queries == [
+        ("Терминатор (The Terminator) 1984", 1984),
+        ("Терминатор", 1984),
+        ("The Terminator", 1984),
+    ]
+    assert kp.search_any("Ничего") == (None, "Ничего")
 
 
 def test_search_not_found():
