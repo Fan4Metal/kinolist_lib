@@ -35,6 +35,9 @@ GENRES = "----:com.apple.iTunes:genre"
 
 LIST_SEPARATOR = ";"
 ACTORS_SEPARATOR = "\r\n"
+# Хотя бы один из этих атомов есть только в файлах, протегированных программой. Файлы с одним
+# названием (например, от релиз-группы) или тегами других программ не считаются протегированными.
+OWN_TAGS = (DIRECTORS, ACTORS, COUNTRIES, RATING, KP_ID)
 
 
 def _freeform(text: str) -> MP4FreeForm:
@@ -109,10 +112,17 @@ def parse_year(value: str) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def has_own_tags(video: MP4) -> bool:
+    return bool(video.tags) and any(key in video.tags for key in OWN_TAGS)
+
+
 def read_tags(file_path: str) -> Film | None:
-    """Читает карточку фильма из тегов mp4. Возвращает ``None``, если тегов нет или файл не открылся."""
+    """Читает карточку фильма из тегов mp4.
+
+    Возвращает ``None``, если файл не открылся или в нём нет тегов, записанных программой.
+    """
     video = _open(file_path)
-    if video is None or not video.tags:
+    if video is None or not has_own_tags(video):
         return None
     title = _text(video, TITLE)
     if not title:

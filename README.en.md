@@ -23,7 +23,7 @@ Kinolist Lib is a Windows command-line tool (`kl`) that builds film lists in doc
 
 ### Installer
 
-The installer (`Kinolist_Lib <version> Setup.exe`) places the program into the user profile, adds it to `PATH` and registers three Explorer context-menu commands: a list from tags for a directory, tag writing for an mp4 file and a list from a txt file.
+The installer (`Kinolist_Lib <version> Setup.exe`) places the program into the user profile, adds it to `PATH` and registers Explorer context-menu commands: a list from tags for a directory (with and without a cover), tag writing and removal for an mp4 file, and a list from a txt file.
 
 ### From source
 
@@ -53,7 +53,7 @@ KINOPOISK_API_TOKEN = "your-token"
 | `kl --loc [dir]` | List built from mp4 tags only, without network access. |
 | `kl -t [file or dir]` | Writes tags into an mp4 file or into all mp4 files in a directory. |
 | `kl -t file.mp4 -kp 406` | Writes tags of the film with the given Kinopoisk id. |
-| `kl --cleartags [file or dir]` | Removes all tags. |
+| `kl --cleartags [file or dir]` | Removes all tags; `--confirm` asks for confirmation first. |
 | `kl -r *.mp4` | Renames files after confirmation. |
 
 Modifiers: `-o` output file, `-s` shortened descriptions, `--txtlist` additional txt list, `-nf` plain list format, `-g` genres in the list, `--a5` A5 template, `--cover [text]` cover page first (without text the title is taken from the directory or file name), `--cover-name` names the output file after the cover title, `--sort` file order for `--loc` (`date`, `date_r`, `datem`, `datem_r`, `name`, `name_r`), `--test` search without creating a list, `--nocache`, `--clearcache`, `--pause` waits for Enter before exiting (used by the context-menu commands).

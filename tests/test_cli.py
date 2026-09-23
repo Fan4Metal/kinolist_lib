@@ -128,6 +128,18 @@ def test_loc_with_cover(fake_api, mp4_file, tmp_path):
     assert cover_texts(custom) == {"Свой текст"}
 
 
+def test_cleartags_with_confirmation(fake_api, mp4_file, monkeypatch):
+    from kinolist.tags import read_tags
+
+    assert cli.main(["-t", mp4_file, "-kp", "507"]) == 0
+    monkeypatch.setattr("builtins.input", lambda prompt: "n")
+    assert cli.main(["--cleartags", mp4_file, "--confirm"]) == 0
+    assert read_tags(mp4_file) is not None
+    monkeypatch.setattr("builtins.input", lambda prompt: "y")
+    assert cli.main(["--cleartags", mp4_file, "--confirm"]) == 0
+    assert read_tags(mp4_file) is None
+
+
 def test_tag_with_explicit_kp_id(fake_api, mp4_file):
     from kinolist.tags import read_tags
 

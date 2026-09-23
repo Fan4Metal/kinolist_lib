@@ -49,13 +49,24 @@ def test_read_tags_tolerates_missing_and_odd_values(mp4_file):
     video = MP4(mp4_file)
     video[tags.TITLE] = "Фильм"
     video[tags.YEAR] = "2019-05-01"
+    video[tags.COUNTRIES] = tags._freeform("США")
     video.save()
     loaded = read_tags(mp4_file)
     assert loaded.title == "Фильм"
     assert loaded.year == 2019
+    assert loaded.countries == ["США"]
     assert loaded.rating == "" and loaded.kp_id is None
     assert loaded.actors == [] and loaded.directors == []
     assert loaded.poster is not None
+
+
+def test_read_tags_skips_files_tagged_by_other_tools(mp4_file):
+    """Файл с одним названием от релиз-группы не должен превращаться в пустую карточку."""
+    video = MP4(mp4_file)
+    video[tags.TITLE] = "-= HDee =-"
+    video[tags.YEAR] = "2020"
+    video.save()
+    assert read_tags(mp4_file) is None
 
 
 def test_empty_description_written_as_space(mp4_file):

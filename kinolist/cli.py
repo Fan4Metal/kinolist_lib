@@ -37,36 +37,50 @@ CACHE_EXPIRE_SECONDS = 3600
 console = Console()
 
 EPILOG = R"""
-Примеры:
-kl -m "Terminator" "Terminator 2" KP~319  --создает список list.docx из 3 фильмов: Terminator,
-                                                Terminator 2 и Terminator 3 (*)
-kl -f movies.txt -o movies.docx           --создает список movies.docx из всех фильмов в файле movies.txt
-kl -t ./Terminator.mp4                    --записывает теги в файл Terminator.mp4 в текущем каталоге
-kl -t c:\movies\Terminator.mp4            --записывает теги в файл Terminator.mp4 в каталоге c:\movies
-kl -t c:\movies\Chuzhie.mp4 -kp 406       --записывает в файл Chuzhie.mp4 теги фильма Чужие (Kinopoisk_id 406)
-kl -t                                     --записывает теги во все mp4 файлы в текущем каталоге
-kl -t c:\movies                           --записывает теги во все mp4 файлы в каталоге c:\movies
-kl --cleartags                            --удаляет все теги во всех mp4 файлах в текущем каталоге
-kl -r *.mp4                               --переименовывает mp4 файлы в текущем каталоге (торрент -> название.mp4)
-kl -l                                     --создает список list.docx из всех mp4 файлов в текущем каталоге.
-kl --loc                                  --создает список list.docx из всех mp4 файлов в текущем каталоге, используя
-                                                только теги файлов (все теги должны быть предварительно записаны в
-                                                файл). Рейтинг в теге kpra, начинающийся с "i" (например: i6.7),
-                                                интерпретируется как рейтинг IMDb.
-kl --loc --newformat                      --создает список из тегов файлов в новом формате
-kl --loc --a5                             --создает список из тегов файлов в формате A5 (для планшетов)
-kl --loc --cover                          --создает список из тегов файлов с обложкой, заголовок обложки
-                                                берется из имени каталога
-kl --loc --cover "Рекомендации #231"      --создает список из тегов файлов с обложкой с указанным заголовком
+Примеры
 
+Списки по названиям (нужен доступ к API):
+  kl -m "Terminator" "Terminator 2" KP~319   список list.docx из трех фильмов
+  kl -f movies.txt -o movies.docx            список movies.docx из названий в файле movies.txt
+  kl -f movies.txt --test                    только поиск фильмов, без создания списка
+  kl -l c:\movies                            список по именам mp4-файлов в каталоге
 
-* Можно указать Kinopoisk_id напрямую, используя тег KP~XXX в названии фильма (где XXX - Kinopoisk_id)
+Списки по тегам (без доступа к API, теги должны быть записаны заранее):
+  kl --loc                                   список list.docx из тегов файлов текущего каталога
+  kl --loc c:\movies --sort datem_r          для каталога c:\movies, новые файлы первыми
+  kl --loc --cover                           с обложкой, заголовок из имени каталога
+  kl --loc --cover "Рекомендации #231"       с обложкой с указанным заголовком
+  kl --loc --cover --cover-name              файл списка называется как заголовок обложки
+
+Оформление списка (для любого способа создания):
+  --a5                                       шаблон A5 (для планшетов)
+  -nf                                        простой нумерованный список без постеров
+  -g                                         жанр фильма в карточке
+  -s                                         сокращенные описания, два фильма на странице
+  --txtlist                                  дополнительно текстовый файл с названиями
+
+Теги mp4 (нужен доступ к API):
+  kl -t                                      записать теги во все mp4-файлы текущего каталога
+  kl -t c:\movies\Terminator.mp4             теги в один файл, фильм ищется по имени файла
+  kl -t c:\movies\Chuzhie.mp4 -kp 406        записать теги фильма с указанным Kinopoisk id
+  kl -t c:\movies --test                     только поиск фильмов по именам файлов
+  kl --cleartags c:\movies                   удалить теги во всех mp4-файлах каталога
+  kl --cleartags Alien.mp4 --confirm         удалить теги в файле после подтверждения
+  kl -r *.mp4                                переименовать файлы: торрент-имя -> Название (год).mp4
+
+Прочее:
+  --nocache, --clearcache                    не использовать кэш запросов, очистить кэш
+  --pause                                    ждать Enter перед выходом (для контекстного меню)
+
+Поиск фильма. Тег KP~XXX в названии задает Kinopoisk id напрямую. Для строки вида
+"Название (Original Title) 2006" перебираются варианты: строка целиком, название без скобок,
+содержимое каждой скобки; год помогает выбрать нужный результат. Рейтинг в теге kpra,
+начинающийся с "i" (например i6.7), интерпретируется как рейтинг IMDb.
 """
 
 SORT_HELP = (
-    "Сортировка списка по тегам. Варианты: date - по дате создания, date_r - по дате создания в обратном порядке, "
-    "datem - по дате изменения, datem_r - по дате изменения в обратном порядке, name - по имени, "
-    "name_r - по имени в обратном порядке"
+    "порядок файлов для --loc: name (по имени, по умолчанию), date (по дате создания), "
+    "datem (по дате изменения); суффикс _r дает обратный порядок, например datem_r"
 )
 
 
@@ -86,47 +100,58 @@ def build_parser() -> argparse.ArgumentParser:
         version=f"Kinolist Lib {__version__}",
         help="выводит версию программы и завершает работу",
     )
-    add("-f", "--file", help="создает список фильмов в формате docx из текстового файла в формате txt")
-    add("--txtlist", action="store_true", help="дополнительно сохраняет текстовый список с названиями фильмов")
-    add("-m", "--movie", nargs="+", help="создает список фильмов в формате docx из указанных фильмов")
+    add("-f", "--file", metavar="FILE.txt", help="список фильмов по названиям из текстового файла, по одному в строке")
+    add("--txtlist", action="store_true", help="дополнительно сохраняет текстовый файл с названиями фильмов")
+    add("-m", "--movie", nargs="+", help="список фильмов по указанным названиям")
     add(
         "--test",
         action="store_true",
-        help="тестовый поиск фильмов без создания списка, работает с параметрами --file, --movie и --tag",
+        help="только поиск фильмов, без создания списка и записи тегов (с --file, --movie, --list и --tag)",
     )
-    add("-o", "--output", help="имя выходного файла (list.docx по умолчанию)")
+    add("-o", "--output", metavar="FILE.docx", help="имя выходного файла (list.docx по умолчанию)")
+    add("-s", "--shorten", action="store_true", help="сокращает описания, чтобы два фильма помещались на странице")
     add(
-        "-s",
-        "--shorten",
-        action="store_true",
-        help="сокращает описания фильмов, чтобы поместились два фильма на странице",
+        "-t",
+        "--tag",
+        nargs="?",
+        const=cwd,
+        metavar="PATH",
+        help="записывает теги в файл mp4 или во все mp4-файлы каталога (по умолчанию текущего)",
     )
-    add(
-        "-t", "--tag", nargs="?", const=cwd, help="записывает теги в файл mp4 (или во все mp4 файлы в текущем каталоге)"
-    )
-    add("-kp", "--kinopoisk_id", type=int, help="указывает значение kinopoisk_id для записи в тег")
+    add("-kp", "--kinopoisk_id", type=int, metavar="ID", help="Kinopoisk id фильма для записи в тег (с --tag)")
     add(
         "--cleartags",
         nargs="?",
         const=cwd,
-        help="удаляет все теги в файле mp4 (или во всех mp4 файлах в текущем каталоге)",
+        metavar="PATH",
+        help="удаляет все теги в файле mp4 или во всех mp4-файлах каталога (по умолчанию текущего)",
     )
-    add("-r", "--rename", nargs="?", const=cwd, help="переименовывает mp4 файлы в текущем каталоге")
+    add("--confirm", action="store_true", help="запрашивает подтверждение перед удалением тегов (с --cleartags)")
+    add(
+        "-r",
+        "--rename",
+        nargs="?",
+        const=cwd,
+        metavar="MASK",
+        help="переименовывает файлы по маске из торрент-имен в «Название (год)», с подтверждением",
+    )
     add(
         "-l",
         "--list",
         nargs="?",
         const=cwd,
-        help="создает список фильмов в формате docx из mp4 файлов в текущем каталоге",
+        metavar="DIR",
+        help="список фильмов по именам mp4-файлов каталога (по умолчанию текущего)",
     )
     add(
         "--loc",
         nargs="?",
         const=cwd,
-        help="создает список фильмов в формате docx из тегов mp4 файлов в текущем каталоге",
+        metavar="DIR",
+        help="список фильмов по тегам mp4-файлов каталога (по умолчанию текущего), без обращения к API",
     )
-    add("-nf", "--newformat", action="store_true", help="модификатор для создания списка фильмов в новом формате")
-    add("-g", "--genres", action="store_true", help="модификатор добавляет жанры в список фильмов")
+    add("-nf", "--newformat", action="store_true", help="простой нумерованный список без постеров")
+    add("-g", "--genres", action="store_true", help="добавляет жанр фильма в список")
     add("--a5", action="store_true", help="список в формате A5 (для списков с постерами)")
     add(
         "--cover",
@@ -140,9 +165,9 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="называет выходной файл как заголовок обложки (без запрещенных символов), работает вместе с --cover",
     )
-    add("--sort", help=SORT_HELP)
-    add("--nocache", action="store_true", help="не использовать кэш")
-    add("--clearcache", action="store_true", help="очистить кэш")
+    add("--sort", metavar="ORDER", help=SORT_HELP)
+    add("--nocache", action="store_true", help="не использовать кэш запросов к API")
+    add("--clearcache", action="store_true", help="очищает кэш запросов к API и завершает работу")
     add("--pause", action="store_true", help="ждет нажатия Enter перед выходом (для запуска из контекстного меню)")
     return parser
 
@@ -336,7 +361,7 @@ def cmd_tag(kp: Kinopoisk, path: str, args: argparse.Namespace) -> None:
         console.error("неверно указан путь.")
 
 
-def cmd_cleartags(path: str) -> None:
+def cmd_cleartags(path: str, confirm: bool = False) -> None:
     if os.path.isfile(path):
         if not is_mp4(path):
             console.error("можно удалять теги только в файлах mp4.")
@@ -350,6 +375,15 @@ def cmd_cleartags(path: str) -> None:
         console.error("неверно указан путь.")
         return
     console.section("Удаление тегов")
+    if confirm:
+        question = (
+            f"Удалить теги в файле {os.path.basename(path)}? [y/n] "
+            if len(files) == 1
+            else f"Удалить теги во всех файлах ({len(files)})? [y/n] "
+        )
+        if console.prompt(question).lower() != "y":
+            console.info("Удаление отменено.")
+            return
     cleared = 0
     for file in files:
         if clear_tags(file):
@@ -412,7 +446,7 @@ def cmd_loc(path: str, output: str, args: argparse.Namespace) -> None:
     for file in files:
         film = read_tags(file)
         if film is None:
-            console.fail(f"{os.path.basename(file)}: теги не прочитаны, файл пропущен")
+            console.fail(f"{os.path.basename(file)}: нет тегов Kinolist, файл пропущен")
         else:
             console.ok(f"{film.title} ({film.year})" if film.year else film.title)
             films.append(film)
@@ -451,7 +485,7 @@ def run(args: argparse.Namespace) -> int:
     elif args.tag:
         cmd_tag(kp, args.tag, args)
     elif args.cleartags:
-        cmd_cleartags(args.cleartags)
+        cmd_cleartags(args.cleartags, args.confirm)
     elif args.list:
         cmd_list(kp, args.list, output, args)
     elif args.rename:
