@@ -64,7 +64,7 @@ Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.mp4\shell\Kinolist_
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.mp4\shell\Kinolist_Lib_clear"; ValueType: String; ValueData: "Удалить теги"; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.mp4\shell\Kinolist_Lib_clear"; ValueName: "Icon"; ValueType: String; ValueData: "{userappdata}\Kinolist_Lib\kl.exe"; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.mp4\shell\Kinolist_Lib_clear\command"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.mp4\shell\Kinolist_Lib_clear\command"; ValueType: String; ValueData: """{userappdata}\Kinolist_Lib\kl.exe"" --cleartags ""%1"" --confirm --pause"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.mp4\shell\Kinolist_Lib_clear\command"; ValueType: String; ValueData: """{userappdata}\Kinolist_Lib\kl.exe"" --cleartags ""%1"" --pause"; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\Kinolist_Lib"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\Kinolist_Lib"; ValueType: String; ValueData: "Список по файлу"; Flags: uninsdeletevalue 
 Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.txt\shell\Kinolist_Lib"; ValueName: "Icon"; ValueType: String; ValueData: "{userappdata}\Kinolist_Lib\kl.exe"; Flags: uninsdeletevalue 

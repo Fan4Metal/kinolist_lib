@@ -64,8 +64,8 @@ EPILOG = R"""
   kl -t c:\movies\Terminator.mp4             теги в один файл, фильм ищется по имени файла
   kl -t c:\movies\Chuzhie.mp4 -kp 406        записать теги фильма с указанным Kinopoisk id
   kl -t c:\movies --test                     только поиск фильмов по именам файлов
-  kl --cleartags c:\movies                   удалить теги во всех mp4-файлах каталога
-  kl --cleartags Alien.mp4 --confirm         удалить теги в файле после подтверждения
+  kl --cleartags Alien.mp4                   удалить теги в файле после подтверждения
+  kl --cleartags c:\movies --no-confirm      удалить теги во всех файлах без вопроса
   kl -r *.mp4                                переименовать файлы: торрент-имя -> Название (год).mp4
 
 Прочее:
@@ -126,7 +126,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help="удаляет все теги в файле mp4 или во всех mp4-файлах каталога (по умолчанию текущего)",
     )
-    add("--confirm", action="store_true", help="запрашивает подтверждение перед удалением тегов (с --cleartags)")
+    add("--no-confirm", action="store_true", help="удаляет теги без запроса подтверждения (с --cleartags)")
     add(
         "-r",
         "--rename",
@@ -361,7 +361,7 @@ def cmd_tag(kp: Kinopoisk, path: str, args: argparse.Namespace) -> None:
         console.error("неверно указан путь.")
 
 
-def cmd_cleartags(path: str, confirm: bool = False) -> None:
+def cmd_cleartags(path: str, confirm: bool = True) -> None:
     if os.path.isfile(path):
         if not is_mp4(path):
             console.error("можно удалять теги только в файлах mp4.")
@@ -485,7 +485,7 @@ def run(args: argparse.Namespace) -> int:
     elif args.tag:
         cmd_tag(kp, args.tag, args)
     elif args.cleartags:
-        cmd_cleartags(args.cleartags, args.confirm)
+        cmd_cleartags(args.cleartags, confirm=not args.no_confirm)
     elif args.list:
         cmd_list(kp, args.list, output, args)
     elif args.rename:

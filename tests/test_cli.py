@@ -108,7 +108,7 @@ def test_tag_and_loc(fake_api, mp4_file, tmp_path):
     output = tmp_path / "loc.docx"
     assert cli.main(["--loc", str(tmp_path), "-o", str(output), "--a5", "--genres", "--sort", "name"]) == 0
     assert output.exists()
-    assert cli.main(["--cleartags", mp4_file]) == 0
+    assert cli.main(["--cleartags", mp4_file, "--no-confirm"]) == 0
     assert cli.main(["--loc", str(tmp_path), "-o", str(tmp_path / "empty.docx")]) == 0
     assert not (tmp_path / "empty.docx").exists()
 
@@ -133,10 +133,15 @@ def test_cleartags_with_confirmation(fake_api, mp4_file, monkeypatch):
 
     assert cli.main(["-t", mp4_file, "-kp", "507"]) == 0
     monkeypatch.setattr("builtins.input", lambda prompt: "n")
-    assert cli.main(["--cleartags", mp4_file, "--confirm"]) == 0
+    assert cli.main(["--cleartags", mp4_file]) == 0
     assert read_tags(mp4_file) is not None
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
-    assert cli.main(["--cleartags", mp4_file, "--confirm"]) == 0
+    assert cli.main(["--cleartags", mp4_file]) == 0
+    assert read_tags(mp4_file) is None
+
+    assert cli.main(["-t", mp4_file, "-kp", "507"]) == 0
+    monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("подтверждение не должно запрашиваться"))
+    assert cli.main(["--cleartags", mp4_file, "--no-confirm"]) == 0
     assert read_tags(mp4_file) is None
 
 
