@@ -31,9 +31,10 @@ DIST = ROOT / "dist"
 # каталог нельзя, а вот заменить файлы внутри него можно.
 STAGING = ROOT / "build" / "staging"
 ENTRY_POINT = "kinolist_lib.py"
-ICON = "icon.ico"
-# Ресурсы кладутся в корень сборки: так их находит kinolist.resources через sys._MEIPASS.
-DATA_FILES = ["template.docx", "template_a5.docx", "template_cover.docx", "no_poster.jpg"]
+ICON = "images/icon.ico"
+# Каталоги ресурсов копируются в сборку с теми же именами: так их находит kinolist.resources
+# через sys._MEIPASS.
+DATA_DIRS = ["templates", "images"]
 INSTALLER_SCRIPT = "kinolist_lib.iss"
 ISCC_CANDIDATES = [
     Path(R"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"),
@@ -109,8 +110,8 @@ def pyinstaller_command(version_file: Path) -> list[str]:
         # Относительные пути в spec считаются от его каталога, поэтому ниже пути абсолютные.
         "--specpath", str(ROOT / "build"),
     ]  # fmt: skip
-    for data in DATA_FILES:
-        cmd += ["--add-data", f"{ROOT / data}{os.pathsep}."]
+    for data in DATA_DIRS:
+        cmd += ["--add-data", f"{ROOT / data}{os.pathsep}{data}"]
     cmd.append(str(ROOT / ENTRY_POINT))
     return cmd
 

@@ -11,10 +11,12 @@ from pathlib import Path
 
 from PIL import Image
 
-TEMPLATE_A4 = "template.docx"
-TEMPLATE_A5 = "template_a5.docx"
-TEMPLATE_COVER = "template_cover.docx"
-NO_POSTER = "no_poster.jpg"
+TEMPLATES_DIR = "templates"
+IMAGES_DIR = "images"
+TEMPLATE_A4 = f"{TEMPLATES_DIR}/template.docx"
+TEMPLATE_A5 = f"{TEMPLATES_DIR}/template_a5.docx"
+TEMPLATE_COVER = f"{TEMPLATES_DIR}/template_cover.docx"
+NO_POSTER = f"{IMAGES_DIR}/no_poster.jpg"
 CACHE_NAME = "cache"
 
 

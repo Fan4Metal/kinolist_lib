@@ -72,7 +72,7 @@ def test_cover_names_output_file(fake_api, mp4_file, tmp_path, monkeypatch):
     (movies / "Terminator.mp4").write_bytes(open(mp4_file, "rb").read())
     assert cli.main(["-t", str(movies / "Terminator.mp4")]) == 0
     monkeypatch.chdir(tmp_path)
-    assert cli.main(["--loc", str(movies), "--cover", "--cover-name", "--txtlist"]) == 0
+    assert cli.main(["--loc", str(movies), "--cover", "--cover-name", "-tl"]) == 0
     assert (tmp_path / "Рекомендации #231.docx").exists()
     assert (tmp_path / "Рекомендации #231.txt").exists()
     assert cli.main(["--loc", str(movies), "--cover", 'Топ: "лучшее"?', "--cover-name", "-o", "out/x.docx"]) == 0
@@ -106,7 +106,7 @@ def test_file_list(fake_api, tmp_path):
 def test_tag_and_loc(fake_api, mp4_file, tmp_path):
     assert cli.main(["-t", mp4_file]) == 0
     output = tmp_path / "loc.docx"
-    assert cli.main(["--loc", str(tmp_path), "-o", str(output), "--a5", "--genres", "--sort", "name"]) == 0
+    assert cli.main(["--loc", str(tmp_path), "-o", str(output), "-a5", "--genres", "--sort", "name"]) == 0
     assert output.exists()
     assert cli.main(["--cleartags", mp4_file, "--no-confirm"]) == 0
     assert cli.main(["--loc", str(tmp_path), "-o", str(tmp_path / "empty.docx")]) == 0

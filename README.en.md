@@ -56,7 +56,7 @@ KINOPOISK_API_TOKEN = "your-token"
 | `kl --cleartags [file or dir]` | Removes all tags after confirmation; `--no-confirm` skips the prompt. |
 | `kl -r *.mp4` | Renames files after confirmation. |
 
-Modifiers: `-o` output file, `-s` shortened descriptions, `--txtlist` additional txt list, `-nf` plain list format, `-g` genres in the list, `--a5` A5 template, `--cover [text]` cover page first (without text the title is taken from the directory or file name), `--cover-name` names the output file after the cover title, `--sort` file order for `--loc` (`date`, `date_r`, `datem`, `datem_r`, `name`, `name_r`), `--test` search without creating a list, `--nocache`, `--clearcache`, `--pause` waits for Enter before exiting (used by the context-menu commands).
+Modifiers: `-o` output file, `-s` shortened descriptions, `-tl` additional txt list, `-nf` plain list format, `-g` genres in the list, `-a5` A5 template, `--cover [text]` cover page first (without text the title is taken from the directory or file name), `--cover-name` names the output file after the cover title, `--sort` file order for `--loc` (`date`, `date_r`, `datem`, `datem_r`, `name`, `name_r`), `--test` search without creating a list, `--nocache`, `--clearcache`, `--pause` waits for Enter before exiting (used by the context-menu commands).
 
 Full reference: `kl --help`.
 
