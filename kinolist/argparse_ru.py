@@ -10,7 +10,7 @@ TRANSLATIONS = {
     "usage": "Применение",
     "show this help message and exit": "выводит это сообщение и завершает работу",
     "error:": "Ошибка:",
-    "the following arguments are required:": "Следующие аргументы обязательные:",
+    "the following arguments are required:": "Следующие аргументы обязательны:",
     "options": "Параметры",
     "show program's version number and exit": "Показывает версию и завершает работу",
     "unrecognized arguments": "нераспознанные параметры",

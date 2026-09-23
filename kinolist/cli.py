@@ -40,7 +40,7 @@ EPILOG = R"""
 Примеры
 
 Списки по названиям (нужен доступ к API):
-  kl -m "Terminator" "Terminator 2" KP~319   список list.docx из трех фильмов
+  kl -m "Terminator" "Terminator 2" KP~319   список list.docx из трёх фильмов
   kl -f movies.txt -o movies.docx            список movies.docx из названий в файле movies.txt
   kl -f movies.txt --test                    только поиск фильмов, без создания списка
   kl -l c:\movies                            список по именам mp4-файлов в каталоге
@@ -56,8 +56,8 @@ EPILOG = R"""
   -a5                                        шаблон A5 (для планшетов)
   -nf                                        простой нумерованный список без постеров
   -g                                         жанр фильма в карточке
-  -s                                         сокращенные описания, два фильма на странице
-  -tl                                        дополнительно текстовый файлс названиями
+  -s                                         сокращённые описания, два фильма на странице
+  -tl                                        дополнительный текстовый файл с названиями
 
 Теги mp4 (нужен доступ к API):
   kl -t                                      записать теги во все mp4-файлы текущего каталога
@@ -72,7 +72,7 @@ EPILOG = R"""
   --nocache, --clearcache                    не использовать кэш запросов, очистить кэш
   --pause                                    ждать Enter перед выходом (для контекстного меню)
 
-Поиск фильма. Тег KP~XXX в названии задает Kinopoisk id напрямую. Для строки вида
+Поиск фильма. Тег KP~XXX в названии задаёт Kinopoisk id напрямую. Для строки вида
 "Название (Original Title) 2006" перебираются варианты: строка целиком, название без скобок,
 содержимое каждой скобки; год помогает выбрать нужный результат. Рейтинг в теге kpra,
 начинающийся с "i" (например i6.7), интерпретируется как рейтинг IMDb.
@@ -80,14 +80,14 @@ EPILOG = R"""
 
 SORT_HELP = (
     "порядок файлов для --loc: name (по имени, по умолчанию), date (по дате создания), "
-    "datem (по дате изменения); суффикс _r дает обратный порядок, например datem_r"
+    "datem (по дате изменения); суффикс _r даёт обратный порядок, например datem_r"
 )
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="kl",
-        description=f"Библиотека для создания списков фильмов в формате docx. Версия {__version__}.",
+        description=f"Списки фильмов в формате docx и теги mp4 по данным Кинопоиска. Версия {__version__}.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=EPILOG,
     )
@@ -133,7 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         const=cwd,
         metavar="MASK",
-        help="переименовывает файлы по маске из торрент-имен в «Название (год)», с подтверждением",
+        help="переименовывает файлы по маске из торрент-имён в «Название (год)», с подтверждением",
     )
     add(
         "-l",
@@ -158,17 +158,17 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="",
         metavar="ТЕКСТ",
-        help="добавляет обложку первой страницей; без текста заголовок берется из имени каталога или файла",
+        help="добавляет обложку первой страницей; без текста заголовок берётся из имени каталога или файла",
     )
     add(
         "--cover-name",
         action="store_true",
-        help="называет выходной файл как заголовок обложки (без запрещенных символов), работает вместе с --cover",
+        help="называет выходной файл как заголовок обложки (без запрещённых символов), работает вместе с --cover",
     )
     add("--sort", metavar="ORDER", help=SORT_HELP)
     add("--nocache", action="store_true", help="не использовать кэш запросов к API")
     add("--clearcache", action="store_true", help="очищает кэш запросов к API и завершает работу")
-    add("--pause", action="store_true", help="ждет нажатия Enter перед выходом (для запуска из контекстного меню)")
+    add("--pause", action="store_true", help="ждёт нажатия Enter перед выходом (для запуска из контекстного меню)")
     return parser
 
 
@@ -269,7 +269,7 @@ def save_lists(films: list[Film], output: str, args: argparse.Namespace, cover_d
     else:
         saved = write_table_list(films, output, template_path(a5=args.a5), genres=args.genres, cover=cover)
     if not saved:
-        console.error(f'нет доступа на запись к файлу "{output}". Список не сохранен.')
+        console.error(f'нет доступа на запись к файлу "{output}". Список не сохранён.')
         return
     if args.txtlist:
         write_txt_list(films, txt_path_for(output))
@@ -394,7 +394,7 @@ def cmd_cleartags(path: str, confirm: bool = True) -> None:
 
 def cmd_list(kp: Kinopoisk, path: str, output: str, args: argparse.Namespace) -> None:
     if not os.path.isdir(path):
-        console.error("в качестве параметра должен быть путь до каталога с файлами mp4.")
+        console.error("нужно указать каталог с файлами mp4.")
         return
     files = list_mp4_dir(path)
     if files:
@@ -435,7 +435,7 @@ def cmd_rename(kp: Kinopoisk, pattern: str) -> None:
 def cmd_loc(path: str, output: str, args: argparse.Namespace) -> None:
     """Список по тегам mp4-файлов каталога без обращения к API."""
     if not os.path.isdir(path):
-        console.error("в качестве параметра должен быть путь до каталога с файлами mp4.")
+        console.error("нужно указать каталог с файлами mp4.")
         return
     files = list_mp4_dir(path, follow_lnk=True, sort=args.sort)
     if not files:
@@ -493,7 +493,7 @@ def run(args: argparse.Namespace) -> int:
     elif args.loc:
         cmd_loc(args.loc, output, args)
     else:
-        console.info("Для помощи используйте параметр --help")
+        console.info("Справка по параметрам: kl --help")
     return 0
 
 
