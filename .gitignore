@@ -1,21 +1,16 @@
-*
-!!make_dir_lib.cmd
-!!make_version_lib.cmd
-!.gitignore
-!.python-version
-!argparse_ru.py
-!freeze.txt
-!icon.ico
-!kinolist_lib.iss
-!kinolist_lib.py
-!LICENSE
-!no_poster.jpg
-!pyproject.toml
-!README.md
-!requirements.txt
-!template_a5.docx
-!template_libre.docx
-!template.docx
-!uv.lock
-!version_lib.txt
-!version_lib.yaml
+# Окружение и кэши
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Сборка
+build/
+dist/
+
+# Локальные данные
+config.py
+*.sqlite
+list.docx
+list.txt

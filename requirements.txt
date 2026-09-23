@@ -1,9 +1,0 @@
-aiogram
-python-docx
-kinopoisk-api-unofficial-client
-requests
-Pillow
-docx2pdf
-tqdm
-mutagen
-parse-torrent-title
